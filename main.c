@@ -54,6 +54,8 @@
 #define OVERSAMPLING            7
 #define I2C_MASTER_FREQUENCY    400000
 
+#define GPIO_INTERRUPT_PRIORITY (7u)
+
 /*******************************************************************************
 * Global Variables
 ********************************************************************************/
@@ -69,6 +71,19 @@ cyhal_i2c_cfg_t i2c_cfg_master = {
         0,                          /* address is not used for master mode */
         I2C_MASTER_FREQUENCY
 };
+
+/* Context for interrupts */
+/* Semaphore from interrupt handler to background process */
+volatile bool gpio_intr_flag = false;
+
+static void gpio_interrupt_handler_HAL(void *arg, cyhal_gpio_event_t event);
+
+/*This structure is used to initialize callback*/
+cyhal_gpio_callback_data_t cb_data =
+    {
+        .callback = gpio_interrupt_handler_HAL,
+        .callback_arg = NULL
+ };
 
 
 /*******************************************************************************
@@ -158,9 +173,18 @@ int main(void)
                                 CYHAL_GPIO_DRIVE_PULLUP, CYBSP_BTN_OFF);
 	if (result != CY_RSLT_SUCCESS) { CY_ASSERT(0); }
 
+    /* Configure GPIO interrupt */
+    cyhal_gpio_register_callback(CYBSP_USER_BTN, &cb_data);
+    cyhal_gpio_enable_event(CYBSP_USER_BTN, CYHAL_GPIO_IRQ_RISE,
+                            GPIO_INTERRUPT_PRIORITY, true);
+
     for (;;)
     {
-    	if(cyhal_gpio_read(CYBSP_USER_BTN) == CYBSP_BTN_PRESSED){
+        /* Check the interrupt status */
+        if (true == gpio_intr_flag)
+        {
+            /* Reset interrupt flag */
+            gpio_intr_flag = false;
             /* Read the pressure and temperature data */
             if (xensiv_dps3xx_read(&dps310_sensor, &pressure, &temperature) == CY_RSLT_SUCCESS)
             {
@@ -179,6 +203,22 @@ int main(void)
         /* Generate a delay of 1 second before next read */
         cyhal_system_delay_ms(1000);
     }
+}
+
+/*******************************************************************************
+* Function Name: gpio_interrupt_handler_HAL
+********************************************************************************
+* Summary:
+*   GPIO interrupt handler for the HAL example.
+*
+* Parameters:
+*  void *handler_arg (unused)
+*  cyhal_gpio_irq_event_t (unused)
+*
+*******************************************************************************/
+static void gpio_interrupt_handler_HAL(void *arg, cyhal_gpio_event_t event)
+{
+    gpio_intr_flag = true;
 }
 
 /* [] END OF FILE */
