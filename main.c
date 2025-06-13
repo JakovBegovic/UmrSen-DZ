@@ -103,8 +103,11 @@ uint32_t get_ticks(void);
  *    2. Initializes retarget IO for UART debug printing
  *    3. Initializes I2C using HAL driver
  *    4. Initializes the DPS310 pressure sensor
- *    5. Measures the temperature and the pressure values and prints it on the
-*        serial terminal every 1 second.
+ *    5. Initializes the timer
+ *    6. Initializes the user button
+ *    7. Configures user button interrupts
+ *    8. Measures the temperature and the pressure values and prints it on the
+*        serial terminal every time the interrupt is triggerd if the time elapsed from the last interrupt is more than 500 ms.
  *
  * Return:
  *  int
@@ -190,7 +193,7 @@ int main(void)
                             GPIO_INTERRUPT_PRIORITY, true);
 
 
-    printf("uCPU pokrenut\r\n");
+    printf("Setup izvrsen\r\n\r\n");
 
     for (;;)
     {
@@ -221,7 +224,7 @@ int main(void)
 * Function Name: init_timer
 ********************************************************************************
 * Summary:
-*   Returns current timer count.
+*   Initializes a timer to tick every 1 microsecond.
 *
 * Parameters:
 *  void
@@ -253,7 +256,6 @@ void init_timer(void) {
 *  void
 *
 *******************************************************************************/
-
 uint32_t get_ticks(void) {
     return cyhal_timer_read(&timer);
 }
@@ -263,7 +265,9 @@ uint32_t get_ticks(void) {
 * Function Name: gpio_interrupt_handler_HAL
 ********************************************************************************
 * Summary:
-*   GPIO interrupt handler for the HAL example.
+*   GPIO interrupt handler for user button. Implements software debouncing.
+*   The debounce time is 500 ms, which has shown to be optimal for reading data
+*   from this sensor.
 *
 * Parameters:
 *  void *handler_arg (unused)
