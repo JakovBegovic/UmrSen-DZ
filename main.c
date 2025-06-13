@@ -76,6 +76,9 @@ cyhal_i2c_cfg_t i2c_cfg_master = {
 /* Semaphore from interrupt handler to background process */
 volatile bool gpio_intr_flag = false;
 
+volatile uint32_t last_time = 0;
+volatile uint32_t current_time = 0;
+
 static void gpio_interrupt_handler_HAL(void *arg, cyhal_gpio_event_t event);
 
 /*This structure is used to initialize callback*/
@@ -85,6 +88,11 @@ cyhal_gpio_callback_data_t cb_data =
         .callback_arg = NULL
  };
 
+/*Timer support*/
+cyhal_timer_t timer;
+
+void init_timer(void);
+uint32_t get_ticks(void);
 
 /*******************************************************************************
  * Function Name: main
@@ -168,6 +176,9 @@ int main(void)
         CY_ASSERT(0);
     }
 
+    /*Initialize the timer*/
+    init_timer();
+
     /* Initialize the user button */
     result = cyhal_gpio_init(CYBSP_USER_BTN, CYHAL_GPIO_DIR_INPUT,
                                 CYHAL_GPIO_DRIVE_PULLUP, CYBSP_BTN_OFF);
@@ -177,6 +188,9 @@ int main(void)
     cyhal_gpio_register_callback(CYBSP_USER_BTN, &cb_data);
     cyhal_gpio_enable_event(CYBSP_USER_BTN, CYHAL_GPIO_IRQ_RISE,
                             GPIO_INTERRUPT_PRIORITY, true);
+
+
+    printf("uCPU pokrenut\r\n");
 
     for (;;)
     {
@@ -199,11 +213,51 @@ int main(void)
                 CY_ASSERT(0);
             }
     	}
-
-        /* Generate a delay of 1 second before next read */
-        cyhal_system_delay_ms(1000);
     }
 }
+
+
+/*******************************************************************************
+* Function Name: init_timer
+********************************************************************************
+* Summary:
+*   Returns current timer count.
+*
+* Parameters:
+*  void
+*
+*******************************************************************************/
+void init_timer(void) {
+    cyhal_timer_cfg_t timer_cfg = {
+        .compare_value = 0,
+        .period = 0xFFFFFFFF, // Max period for continuous running
+        .direction = CYHAL_TIMER_DIR_UP,
+        .is_compare = false,
+        .is_continuous = true,
+        .value = 0
+    };
+    cyhal_timer_init(&timer, NC, NULL); // NC = no connect pin
+    cyhal_timer_configure(&timer, &timer_cfg);
+    cyhal_timer_set_frequency(&timer, 1000000); // 1 MHz for microsecond resolution
+    cyhal_timer_start(&timer);
+}
+
+
+/*******************************************************************************
+* Function Name: get_ticks
+********************************************************************************
+* Summary:
+*   Returns current timer count in microseconds.
+*
+* Parameters:
+*  void
+*
+*******************************************************************************/
+
+uint32_t get_ticks(void) {
+    return cyhal_timer_read(&timer);
+}
+
 
 /*******************************************************************************
 * Function Name: gpio_interrupt_handler_HAL
@@ -218,7 +272,13 @@ int main(void)
 *******************************************************************************/
 static void gpio_interrupt_handler_HAL(void *arg, cyhal_gpio_event_t event)
 {
-    gpio_intr_flag = true;
+	current_time = get_ticks();
+
+	if (current_time - last_time > 500000) { // 500000 microseconds = 500 miliseconds
+		gpio_intr_flag = true;
+	}
+
+	last_time = current_time;
 }
 
 /* [] END OF FILE */
