@@ -57,6 +57,9 @@
 *******************************************************************************/
 #define GPIO_INTERRUPT_PRIORITY (7u)
 
+#define GRAVITY_ACCEL 9.8f
+#define DEG_TO_RAD_COEF 0.017f // 2*pi/360 = 0,017
+
 /*******************************************************************************
 * Global Variables
 ********************************************************************************/
@@ -80,6 +83,8 @@ cyhal_gpio_callback_data_t cb_data =
 int16_t transmit_imu[6] = {0};
 float *imu_raw_data = (float *)transmit_imu;
 
+/*Data processing*/
+void change_measurement_units();
 
 /*******************************************************************************
  * Function Name: main
@@ -181,14 +186,16 @@ int main(void)
           imu_flag = false;
           imu_get_data(imu_raw_data);
 
+          change_measurement_units();
+
           /* Display IMU data - assuming the data is organized as [accel_x,
            * accel_y, accel_z, gyro_x, gyro_y, gyro_z] */
-          printf("Accel X     : %0.3f g\r\n", imu_raw_data[0]);
-          printf("Accel Y     : %0.3f g\r\n", imu_raw_data[1]);
-          printf("Accel Z     : %0.3f g\r\n", imu_raw_data[2]);
-          printf("Gyro X      : %0.3f dps\r\n", imu_raw_data[3]);
-          printf("Gyro Y      : %0.3f dps\r\n", imu_raw_data[4]);
-          printf("Gyro Z      : %0.3f dps\r\n", imu_raw_data[5]);
+          printf("Accel X     : %0.3f m^2/s\r\n", imu_raw_data[0]);
+          printf("Accel Y     : %0.3f m^2/s\r\n", imu_raw_data[1]);
+          printf("Accel Z     : %0.3f m^2/s\r\n", imu_raw_data[2]);
+          printf("Gyro X      : %0.3f rad/s\r\n", imu_raw_data[3]);
+          printf("Gyro Y      : %0.3f rad/s\r\n", imu_raw_data[4]);
+          printf("Gyro Z      : %0.3f rad/s\r\n", imu_raw_data[5]);
         }
     }
 }
@@ -218,4 +225,18 @@ static void gpio_interrupt_handler_HAL(void *arg, cyhal_gpio_event_t event)
 	}
 
 }
+
+void change_measurement_units(){
+	// turn g-unit to m^2/s
+	imu_raw_data[0] = imu_raw_data[0] * GRAVITY_ACCEL;
+	imu_raw_data[1] = imu_raw_data[1] * GRAVITY_ACCEL;
+	imu_raw_data[2] = imu_raw_data[2] * GRAVITY_ACCEL;
+
+	// turn °/s to rad/s
+	imu_raw_data[3] = imu_raw_data[3] * DEG_TO_RAD_COEF;
+	imu_raw_data[4] = imu_raw_data[4] * DEG_TO_RAD_COEF;
+	imu_raw_data[5] = imu_raw_data[5] * DEG_TO_RAD_COEF;
+}
+
+
 /* [] END OF FILE */
