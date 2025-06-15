@@ -47,6 +47,7 @@
 #include "cy_retarget_io.h"
 #include "xensiv_dps3xx_mtb.h"
 #include "xensiv_dps3xx.h"
+#include "temp-reader.h"
 
 /*******************************************************************************
 * Macros
@@ -59,9 +60,6 @@
 /*******************************************************************************
 * Global Variables
 ********************************************************************************/
-/* Context for dps310 */
-xensiv_dps3xx_t dps310_sensor;
-
 /* Declaration for i2c handler */
 cyhal_i2c_t I2Cm_HW;
 
@@ -116,7 +114,6 @@ uint32_t get_ticks(void);
 int main(void)
 {
     cy_rslt_t result;
-    uint32_t revisionID = 0;
     float pressure, temperature;
 
     /* Initialize the device and board peripherals */
@@ -159,25 +156,7 @@ int main(void)
         CY_ASSERT(0);
     }
 
-    /* Initialize pressure sensor */
-    result = xensiv_dps3xx_mtb_init_i2c(&dps310_sensor, &I2Cm_HW,
-                                        XENSIV_DPS3XX_I2C_ADDR_DEFAULT);
-    if (result != CY_RSLT_SUCCESS)
-    {
-        printf("\r\nFailed to initialize DPS310 I2C\r\n");
-        CY_ASSERT(0);
-    }
-
-    /* Retrieve the DPS310 Revision ID and display the same */
-    if (xensiv_dps3xx_get_revision_id(&dps310_sensor,(uint8_t*)&revisionID) == CY_RSLT_SUCCESS)
-    {
-        printf("DPS310 Revision ID = %d\r\n\n",(uint8_t)revisionID);
-    }
-    else
-    {
-        printf("Failed to get Revision ID\r\n");
-        CY_ASSERT(0);
-    }
+    result = init_dsp310(&I2Cm_HW);
 
     /*Initialize the timer*/
     init_timer();
@@ -191,8 +170,7 @@ int main(void)
     cyhal_gpio_register_callback(CYBSP_USER_BTN, &cb_data);
     cyhal_gpio_enable_event(CYBSP_USER_BTN, CYHAL_GPIO_IRQ_RISE,
                             GPIO_INTERRUPT_PRIORITY, true);
-
-
+    
     printf("Setup izvrsen\r\n\r\n");
 
     for (;;)
