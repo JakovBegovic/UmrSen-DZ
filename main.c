@@ -84,7 +84,11 @@ int16_t transmit_imu[6] = {0};
 float *imu_raw_data = (float *)transmit_imu;
 
 /*Data processing*/
+float imu_stationary_data[6] = {0};
+
 void change_measurement_units();
+void imu_calculate_stationary_values();
+void imu_compensate();
 
 /*******************************************************************************
  * Function Name: main
@@ -144,6 +148,8 @@ int main(void)
       CY_ASSERT(0);
     }
 
+    imu_calculate_stationary_values();
+
     /*Initialize the timer*/
     init_timer();
 
@@ -186,10 +192,13 @@ int main(void)
           imu_flag = false;
           imu_get_data(imu_raw_data);
 
+          imu_compensate();
+
           change_measurement_units();
 
           /* Display IMU data - assuming the data is organized as [accel_x,
            * accel_y, accel_z, gyro_x, gyro_y, gyro_z] */
+          printf("\x1b[2J\x1b[;H \r");
           printf("Accel X     : %0.3f m^2/s\r\n", imu_raw_data[0]);
           printf("Accel Y     : %0.3f m^2/s\r\n", imu_raw_data[1]);
           printf("Accel Z     : %0.3f m^2/s\r\n", imu_raw_data[2]);
@@ -224,6 +233,34 @@ static void gpio_interrupt_handler_HAL(void *arg, cyhal_gpio_event_t event)
 		last_time = current_time;
 	}
 
+}
+
+void imu_calculate_stationary_values(){
+	// calculate zero offset from arithmetic average
+	for(int i=0; i<10; i++){
+	    imu_get_data(imu_raw_data);
+
+	    imu_stationary_data[0] += imu_raw_data[0] * 0.1f;
+	    imu_stationary_data[1] += imu_raw_data[1] * 0.1f;
+	    imu_stationary_data[2] += imu_raw_data[2] * 0.1f;
+	    imu_stationary_data[3] += imu_raw_data[3] * 0.1f;
+	    imu_stationary_data[4] += imu_raw_data[4] * 0.1f;
+	    imu_stationary_data[5] += imu_raw_data[5] * 0.1f;
+
+	    cyhal_system_delay_ms(5);
+	}
+
+	imu_stationary_data[2] = imu_raw_data[2] + 2.8f;
+}
+
+void imu_compensate(){
+	// compensate for zero offset
+	imu_raw_data[0] = imu_raw_data[0] - imu_stationary_data[0];
+	imu_raw_data[1] = imu_raw_data[1] - imu_stationary_data[1];
+	imu_raw_data[2] = imu_raw_data[2] - imu_stationary_data[2];
+	imu_raw_data[3] = imu_raw_data[3] - imu_stationary_data[3];
+	imu_raw_data[4] = imu_raw_data[4] - imu_stationary_data[4];
+	imu_raw_data[5] = imu_raw_data[5] - imu_stationary_data[5];
 }
 
 void change_measurement_units(){
