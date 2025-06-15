@@ -40,6 +40,9 @@ cy_rslt_t init_dsp310(cyhal_i2c_t* I2Cm_HW){
     return init_result;
 }
 
+cy_rslt_t read_temp(float* pressure, float* temperature){
+	return xensiv_dps3xx_read(&dps310_sensor, pressure, temperature);
+}
 
 
 #endif /* TEMP_READER_H_ */

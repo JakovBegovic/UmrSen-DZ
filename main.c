@@ -181,7 +181,7 @@ int main(void)
             /* Reset interrupt flag */
             gpio_intr_flag = false;
             /* Read the pressure and temperature data */
-            if (xensiv_dps3xx_read(&dps310_sensor, &pressure, &temperature) == CY_RSLT_SUCCESS)
+            if (read_temp(&pressure, &temperature) == CY_RSLT_SUCCESS)
             {
                 /* Display the pressure and temperature data in console*/
                 printf("Pressure : %0.2f mBar", pressure);
