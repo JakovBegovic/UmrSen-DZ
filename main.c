@@ -47,7 +47,9 @@
 #include "cy_retarget_io.h"
 #include "xensiv_dps3xx_mtb.h"
 #include "xensiv_dps3xx.h"
+
 #include "temp-reader.h"
+#include "timer-handler.h"
 
 /*******************************************************************************
 * Macros
@@ -71,7 +73,6 @@ cyhal_i2c_cfg_t i2c_cfg_master = {
 };
 
 /* Context for interrupts */
-/* Semaphore from interrupt handler to background process */
 volatile bool gpio_intr_flag = false;
 
 volatile uint32_t last_time = 0;
@@ -86,11 +87,6 @@ cyhal_gpio_callback_data_t cb_data =
         .callback_arg = NULL
  };
 
-/*Timer support*/
-cyhal_timer_t timer;
-
-void init_timer(void);
-uint32_t get_ticks(void);
 
 /*******************************************************************************
  * Function Name: main
@@ -197,48 +193,6 @@ int main(void)
     }
 }
 
-
-/*******************************************************************************
-* Function Name: init_timer
-********************************************************************************
-* Summary:
-*   Initializes a timer to tick every 1 microsecond.
-*
-* Parameters:
-*  void
-*
-*******************************************************************************/
-void init_timer(void) {
-    cyhal_timer_cfg_t timer_cfg = {
-        .compare_value = 0,
-        .period = 0xFFFFFFFF, // Max period for continuous running
-        .direction = CYHAL_TIMER_DIR_UP,
-        .is_compare = false,
-        .is_continuous = true,
-        .value = 0
-    };
-    cyhal_timer_init(&timer, NC, NULL); // NC = no connect pin
-    cyhal_timer_configure(&timer, &timer_cfg);
-    cyhal_timer_set_frequency(&timer, 1000000); // 1 MHz for microsecond resolution
-    cyhal_timer_start(&timer);
-}
-
-
-/*******************************************************************************
-* Function Name: get_ticks
-********************************************************************************
-* Summary:
-*   Returns current timer count in microseconds.
-*
-* Parameters:
-*  void
-*
-*******************************************************************************/
-uint32_t get_ticks(void) {
-    return cyhal_timer_read(&timer);
-}
-
-
 /*******************************************************************************
 * Function Name: gpio_interrupt_handler_HAL
 ********************************************************************************
@@ -256,7 +210,7 @@ static void gpio_interrupt_handler_HAL(void *arg, cyhal_gpio_event_t event)
 {
 	current_time = get_ticks();
 
-	if (current_time - last_time > 500000) { // 500000 microseconds = 500 miliseconds
+	if (current_time - last_time > 1000000) { // 1000000 microseconds = 1000 miliseconds
 		gpio_intr_flag = true;
 
 		last_time = current_time;
