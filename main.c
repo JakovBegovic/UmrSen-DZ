@@ -114,7 +114,6 @@ uint32_t get_ticks(void);
 int main(void)
 {
     cy_rslt_t result;
-    float pressure, temperature;
 
     /* Initialize the device and board peripherals */
     result = cybsp_init();
@@ -173,6 +172,7 @@ int main(void)
     
     printf("Setup izvrsen\r\n\r\n");
 
+    float pressure, temperature;
     for (;;)
     {
         /* Check the interrupt status */
