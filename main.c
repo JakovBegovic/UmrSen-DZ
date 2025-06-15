@@ -45,32 +45,19 @@
 #include "cyhal.h"
 #include "cybsp.h"
 #include "cy_retarget_io.h"
-#include "xensiv_dps3xx_mtb.h"
-#include "xensiv_dps3xx.h"
 
 #include "temp-reader.h"
 #include "timer-handler.h"
+#include "i2c-handler.h"
 
 /*******************************************************************************
 * Macros
 *******************************************************************************/
-#define OVERSAMPLING            7
-#define I2C_MASTER_FREQUENCY    400000
-
 #define GPIO_INTERRUPT_PRIORITY (7u)
 
 /*******************************************************************************
 * Global Variables
 ********************************************************************************/
-/* Declaration for i2c handler */
-cyhal_i2c_t I2Cm_HW;
-
-/* Define the I2C master configuration structure */
-cyhal_i2c_cfg_t i2c_cfg_master = {
-        CYHAL_I2C_MODE_MASTER,
-        0,                          /* address is not used for master mode */
-        I2C_MASTER_FREQUENCY
-};
 
 /* Context for interrupts */
 volatile bool gpio_intr_flag = false;
@@ -135,21 +122,7 @@ int main(void)
     printf("  PSoC 6 MCU:  Interfacing DPS310 Pressure Sensor \r\n");
     printf("=========================================================\n\n\r");
 
-    /* Initialize i2c for pressure sensor */
-    result = cyhal_i2c_init(&I2Cm_HW, CYBSP_I2C_SDA, CYBSP_I2C_SCL, NULL);
-    if (result != CY_RSLT_SUCCESS)
-    {
-        printf("\r\nI2C initialization failed\r\n");
-        CY_ASSERT(0);
-    }
-
-    /* Configure i2c with master configurations */
-    result = cyhal_i2c_configure(&I2Cm_HW, &i2c_cfg_master);
-    if (result != CY_RSLT_SUCCESS)
-    {
-        printf("\r\nFailed to configure I2C\r\n");
-        CY_ASSERT(0);
-    }
+    setup_i2c();
 
     result = init_dsp310(&I2Cm_HW);
 
