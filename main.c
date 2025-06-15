@@ -280,9 +280,10 @@ static void gpio_interrupt_handler_HAL(void *arg, cyhal_gpio_event_t event)
 
 	if (current_time - last_time > 500000) { // 500000 microseconds = 500 miliseconds
 		gpio_intr_flag = true;
+
+		last_time = current_time;
 	}
 
-	last_time = current_time;
 }
 
 /* [] END OF FILE */
